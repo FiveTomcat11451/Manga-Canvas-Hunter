@@ -1,64 +1,74 @@
-# 📖 Manga Canvas Hunter
+# 📖 Manga Canvas Hunter V20.1 (Final Ultimate)
 
-> **为稳健而生的 Canvas 漫画采集利器。** 穿透遮罩、智能查重、极致交互。
+> **这是一份献给所有漫画汉化组的礼物：让生肉采集回归纯粹与高效。**
+> **A specialized toolkit for Manga Translation Groups. Precision, Stability, and Speed.**
 
-[![Version](https://img.shields.io/badge/Version-20.0-blue.svg)]()
+---
+
+## 🌹 致敬与鸣谢 (Dedication)
+
+本项目特别献给日以继夜工作的**漫画汉化组**。是你们的热爱让优秀的漫画跨越了语言的国界。
+为了优化汉化工作流中的第一步——“素材采集”，本项目经历了 30 余次实测重构，旨在提供最稳健的原画捕获方案。
+**“献给那些让故事得以延续的人们。”**
+
+---
+
+[![Version](https://img.shields.io/badge/Version-20.1-blue.svg)]()
 [![Platform](https://img.shields.io/badge/Platform-Tampermonkey-orange.svg)]()
 [![AI-Assisted](https://img.shields.io/badge/AI-Collaborated-blueviolet.svg)]()
 [![License](https://img.shields.io/badge/License-MIT-green.svg)]()
 
 ---
 
-## 🤖 AI 项目声明 (AI Project Disclosure)
-本项目由 **Five（本人）** 构思并主导，核心逻辑由开发者与 **Gemini AI、Claude** 协同开发完成。
-* **逻辑控制**：由开发者进行代码审查、UI 状态同步修复及核心防弹逻辑校验。
-* **架构完善**：由 AI 辅助完成代码注释、README 编写及 UI 折叠组件的布局优化。
-* **版本状态**：本版本 (V20.0) 已通过开发者深度实测。
+## 📑 项目核心结构 (Structure)
+
+本项目通过以下四大模块，构建了从“页面嗅探”到“本地导出”的完整闭环：
+
+### 1️⃣ 穿透与识别模块 (Detection & Penetration)
+* **物理穿透算法**：针对 Kadokomi (Comic Walker) 等站点的透明防盗层，利用 `elementsFromPoint` 算法绕过 DOM 遮障。
+* **全域匹配引擎**：内置 25+ 主流平台规则，配合 `/episode/` 等模糊匹配逻辑，实现“开箱即用”。
+
+### 2️⃣ 智能过滤模块 (Filtering & Fingerprinting)
+* **视觉指纹查重**：自研 **5 点像素采样哈希** 逻辑。通过对 Canvas 关键坐标进行色彩采样生成唯一 ID，彻底杜绝翻页过程中的重复采集。
+* **多维度筛选**：支持按 Canvas 宽高比例过滤广告与无关元素。
+
+### 3️⃣ 任务管理模块 (Task Management)
+* **异步生产流水线**：基于 JSZip 的非阻塞打包技术。Canvas -> Blob -> Zip 的转换在后台静默完成，不影响浏览体验。
+* **内存平衡系统**：实时监控缓存负载，支持自定义存储上限，保护浏览器在高负载下不崩溃。
+
+### 4️⃣ 交互反馈模块 (UI & Interface)
+* **手风琴折叠面板**：所有高级设置（画质、反馈颜色、查重开关）分类收纳，保持界面整洁。
+* **实时状态联动**：UI 状态机与核心逻辑毫秒级同步，确保“采集状态”所见即所得。
 
 ---
 
-## 💎 项目核心优势
+## 🚀 深度适配列表 (Site Support)
 
-针对 Canvas 渲染的漫画抓取痛点，本项目通过以下技术闭环完美解决了问题：
-
-* **🛡️ 物理级穿透 (Penetration Logic)**：内置 `elementsFromPoint` 算法，无视任何覆盖在 Canvas 上的透明防盗 div。
-* **🧠 智能指纹 (Canvas Fingerprinting)**：抽取 Canvas 5 个关键像素点生成唯一 Hash。脚本**绝对不会重复抓取**同一页。
-* **🎯 暴力手动模式**：当自动检测失效时，开启手动模式，按 **`D`** 键强制捕获鼠标指向的内容。
-* **⚡ 异步打包系统**：集成 `JSZip` 库，在后台静默生成压缩包，不卡顿浏览器。
-* **🎨 现代手风琴 UI**：界面清爽，设置项分类折叠，支持透明度自定义，不遮挡阅读。
+| 平台级别 | 适配站点 (部分列举) |
+| :--- | :--- |
+| **S级 (深度优化)** | Kadokomi (カドコミ), Comic Walker, Shonen Jump+, Comic Days |
+| **A级 (完美适配)** | Magapoke, Sunday Webry, Manga Park, Tonari no Young Jump |
+| **B级 (通用兼容)** | 理论支持所有包含 `/viewer/` 或 `/episode/` URL 结构的漫画站 |
 
 ---
 
-## 📖 操作指南
+## 🤖 开发者与 AI 协作声明
 
-### 1. 快捷键列表
-| 按键 | 功能 | 触发条件 |
-| :--- | :--- | :--- |
-| **D** | **强制采集 (Direct)** | 鼠标悬停在目标 Canvas 上 |
-| **⚙️ 图标** | **设置面板** | 实时调整画质、反馈样式与内存上限 |
-
-### 2. 核心模式说明
-* **自动模式 (Auto)**：基于 `IntersectionObserver` 监听，进入视口即采集。
-* **手动模式 (Manual)**：完全接管控制权，适合需要精准点对点采集的场景。
+本项目由 **[FiveTomcat11451](https://github.com/FiveTomcat11451)** 深度主导。
+* **核心逻辑**：开发者经历了 30+ 版本的压力测试，攻克了 Kadokomi 穿透及 UI 同步等核心难题。
+* **AI 协作 (Gemini)**：辅助进行多站点匹配规则编写、Markdown 交互设计及代码重构建议。
 
 ---
 
-## 🛠️ 技术实现细节
+## 📦 安装方式 (Installation)
 
-脚本采用了高度解耦的结构，确保 UI 刷新与采集逻辑互不干扰：
-1.  **监听层**：使用 `MutationObserver` 实时扫描 DOM 树。
-2.  **过滤层**：通过宽高筛选和 Fingerprint 哈希池过滤。
-3.  **显示层**：动态 CSS 注入反馈动画，实时同步 `updatePauseButtonUI` 状态。
-
----
-
-## 🚀 安装与贡献
-
-1.  安装 [Tampermonkey](https://www.tampermonkey.net/) 插件。
-2.  新建脚本并粘贴源码。
-3.  **适配站点**：理论支持所有 Canvas 渲染站点（如 TakeComic, Shonen Jump+ 等）。
+1.  确保浏览器已安装 [Tampermonkey](https://www.tampermonkey.net/) 插件。
+2.  访问本仓库中的 [manga-canvas-hunter.user.js](https://github.com/FiveTomcat11451/Manga-Canvas-Hunter/raw/main/manga-canvas-hunter.user.js)。
+3.  点击“安装/更新”。
 
 ---
 
 ## ⚖️ 免责声明
-本工具仅用于前端技术研究。请尊重创作者版权，禁止用于商业传播或非法用途。
+本工具仅供技术研究及汉化组内部交流使用。请务必尊重原作者版权，严禁将本工具采集的内容用于商业传播。使用者需自行承担因违反目标网站服务条款而产生的风险。
+
+---
