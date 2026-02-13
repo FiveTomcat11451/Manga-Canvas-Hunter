@@ -1,5 +1,10 @@
 # 📖 Manga Canvas Hunter V20.1 (Final Ultimate)
 
+[![Version](https://img.shields.io/badge/Version-20.1-blue.svg)]()
+[![Platform](https://img.shields.io/badge/Platform-Tampermonkey-orange.svg)]()
+[![AI-Assisted](https://img.shields.io/badge/AI-Collaborated-blueviolet.svg)]()
+[![License](https://img.shields.io/badge/License-MIT-green.svg)]()
+
 > **这是一份献给所有漫画汉化组的礼物：让生肉采集回归纯粹与高效。**
 > **A specialized toolkit for Manga Translation Groups. Precision, Stability, and Speed.**
 
@@ -10,13 +15,6 @@
 本项目特别献给日以继夜工作的**漫画汉化组**。是你们的热爱让优秀的漫画跨越了语言的国界。
 为了优化汉化工作流中的第一步——“素材采集”，本项目经历了 30 余次实测重构，旨在提供最稳健的原画捕获方案。
 **“献给那些让故事得以延续的人们。”**
-
----
-
-[![Version](https://img.shields.io/badge/Version-20.1-blue.svg)]()
-[![Platform](https://img.shields.io/badge/Platform-Tampermonkey-orange.svg)]()
-[![AI-Assisted](https://img.shields.io/badge/AI-Collaborated-blueviolet.svg)]()
-[![License](https://img.shields.io/badge/License-MIT-green.svg)]()
 
 ---
 
