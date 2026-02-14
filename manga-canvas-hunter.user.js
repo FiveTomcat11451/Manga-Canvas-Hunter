@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         Manga Canvas Hunter V20.0 Final
-// @version      20.0
-// @description  UI折叠设置 + 详细教程 + 全代码注释 + 核心防弹逻辑 (修复暂停按钮UI不刷新)
-// @author       Gemini & You
+// @name         Manga Canvas Hunter V21.0 Enhanced
+// @version      21.0
+// @description  稳定性增强 + 失败可视化 + 内存保护 + 面板拖拽 + 进度提示。专门攻克基于 Canvas 渲染的漫画阅读器。
+// @author       Five & Gemini & Claude
 // @match        https://takecomic.jp/episodes/*
 // @match        *://*.comic-days.com/episode/*
 // @match        *://*.shonenjumpplus.com/episode/*
@@ -49,7 +49,11 @@
         queue: [],               // 处理队列
         processing: 0,           // 当前正在处理的任务数
         totalSizeBytes: 0,       // 总内存占用
-        mousePos: { x: 0, y: 0 } // 实时鼠标坐标（用于穿透查找）
+        failedCount: 0,          // 失败页数统计
+        mousePos: { x: 0, y: 0 }, // 实时鼠标坐标（用于穿透查找）
+        memoryLimit: 200 * 1024 * 1024, // 内存上限 200MB
+        isDragging: false,       // 面板拖拽状态
+        dragOffset: { x: 0, y: 0 } // 拖拽偏移量
     };
 
     // ==========================================
@@ -100,7 +104,8 @@
             let hash = 0;
             pts.forEach(([x, y]) => {
                 const d = ctx.getImageData(Math.floor(x), Math.floor(y), 1, 1).data;
-                for(let i=0; i<4; i++) hash = (Math.imul(hash, 31) + d[i]) | 0;
+                // 轻度降噪：右移4位压缩（防WebGL微差）
+                for(let i=0; i<4; i++) hash = (Math.imul(hash, 31) + (d[i] >> 4)) | 0;
             });
             return `${w}x${h}_${(hash >>> 0).toString(36)}`;
         } catch(e) {
@@ -146,6 +151,20 @@
         // 基础过滤：太小的图或者是自动模式下已暂停
         if (!canvas || canvas.width < 200 || (cfg.isPaused && !isForced)) return;
 
+        // 内存上限检查
+        if (STATE.totalSizeBytes >= STATE.memoryLimit && !isForced) {
+            if (!cfg.isPaused) {
+                cfg.isPaused = true;
+                alert(`⚠️ 已达到内存上限 ${Math.floor(STATE.memoryLimit/1024/1024)}MB\n已自动暂停，请下载后清空缓存。`);
+                const btnPause = document.getElementById('btn-pause');
+                if(btnPause) {
+                    btnPause.textContent = '▶ 恢复自动抓取';
+                    btnPause.style.background = '#ff9800';
+                }
+            }
+            return;
+        }
+
         // 【关键】手动触发立即反馈，不经过任何异步等待，确保手感
         if (isForced) playFeedback(canvas);
 
@@ -175,23 +194,37 @@
         updateUI();
     }
 
-    // 转换核心：Canvas -> Blob
+    // 转换核心：Canvas -> Blob（完整异常兜底）
     function canvasToBlob(canvas, isForced, fp) {
-        canvas.toBlob((blob) => {
-            STATE.processing--; processQueue();
-            if (!blob) return;
-            
-            // 二次查重：防止异步间隙的重复（主要针对手动强制模式的复杂情况）
-            if (isForced && !cfg.skipHashOnManual && STATE.hashes.has(fp)) return;
+        try {
+            canvas.toBlob((blob) => {
+                STATE.processing--; processQueue();
+                
+                // null 检测
+                if (!blob) {
+                    STATE.failedCount++;
+                    console.warn('[失败] Canvas转Blob返回null，可能是跨域限制');
+                    updateUI();
+                    return;
+                }
+                
+                // 二次查重：防止异步间隙的重复（主要针对手动强制模式的复杂情况）
+                if (isForced && !cfg.skipHashOnManual && STATE.hashes.has(fp)) return;
 
-            if (isForced) STATE.hashes.add(fp);
-            STATE.totalSizeBytes += blob.size;
-            STATE.images.push({ blob, ext: cfg.isHQ ? 'png' : 'jpg', hash: fp });
+                if (isForced) STATE.hashes.add(fp);
+                STATE.totalSizeBytes += blob.size;
+                STATE.images.push({ blob, ext: cfg.isHQ ? 'png' : 'jpg', hash: fp });
+                updateUI();
+                
+                // 自动模式在保存成功后播放反馈
+                if (!isForced) playFeedback(canvas); 
+            }, cfg.isHQ ? 'image/png' : 'image/jpeg', 0.9);
+        } catch(e) {
+            STATE.processing--; processQueue();
+            STATE.failedCount++;
+            console.error('[异常] Canvas转换失败:', e.message);
             updateUI();
-            
-            // 自动模式在保存成功后播放反馈
-            if (!isForced) playFeedback(canvas); 
-        }, cfg.isHQ ? 'image/png' : 'image/jpeg', 0.9);
+        }
     }
 
     // ==========================================
@@ -204,8 +237,8 @@
         panel.style.cssText = `position:fixed; top:20px; right:20px; z-index:2147483640; background:white; width:${cfg.isCollapsed?'120px':'240px'}; border-radius:14px; box-shadow:0 10px 30px rgba(0,0,0,0.15); font-family:system-ui, sans-serif; opacity:${cfg.panelOpacity}; border:1px solid #eee; overflow:hidden;`;
         
         panel.innerHTML = `
-            <div id="tc-header" style="background:#2196F3; color:white; padding:12px; cursor:pointer; display:flex; justify-content:space-between; align-items:center; font-weight:bold; font-size:12px;">
-                <span>HUNTER V20.0</span><span id="tc-arrow">${cfg.isCollapsed?'▼':'▲'}</span>
+            <div id="tc-header" style="background:#2196F3; color:white; padding:12px; cursor:move; display:flex; justify-content:space-between; align-items:center; font-weight:bold; font-size:12px;">
+                <span>HUNTER V20.1</span><span id="tc-arrow">${cfg.isCollapsed?'▼':'▲'}</span>
             </div>
 
             <div id="tc-body" style="padding:15px; display:${cfg.isCollapsed?'none':'block'}; position:relative;">
@@ -214,7 +247,10 @@
 
                 <div style="display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:12px;">
                     <div><span id="tc-count" style="font-size:32px; font-weight:bold; color:#2196F3;">0</span><small style="color:#999; margin-left:4px;">pages</small></div>
-                    <div id="tc-memory" style="font-size:10px; color:#888; margin-bottom:5px; margin-right:25px;">0.0 MB</div>
+                    <div style="text-align:right; margin-right:25px;">
+                        <div id="tc-memory" style="font-size:10px; color:#888;">0.0 MB</div>
+                        <div id="tc-failed" style="font-size:10px; color:#f5222d; display:none;">失败: 0</div>
+                    </div>
                 </div>
 
                 <button id="btn-manual-act" style="width:100%; padding:10px; background:#e3f2fd; color:#2196F3; border:2px dashed #2196F3; border-radius:8px; cursor:pointer; font-weight:bold; margin-bottom:10px; display:${cfg.isManualMode?'block':'none'};">🎯 暴力抓取当前页</button>
@@ -264,6 +300,35 @@
 
     function bindEvents() {
         const $ = id => document.getElementById(id);
+        
+        // 面板拖拽功能
+        const header = $('tc-header');
+        const panel = $('tc-panel');
+        
+        header.addEventListener('mousedown', (e) => {
+            if(e.target.id === 'tc-arrow') return; // 点击箭头不触发拖拽
+            STATE.isDragging = true;
+            const rect = panel.getBoundingClientRect();
+            STATE.dragOffset.x = e.clientX - rect.left;
+            STATE.dragOffset.y = e.clientY - rect.top;
+            panel.style.transition = 'none';
+        });
+        
+        document.addEventListener('mousemove', (e) => {
+            if(!STATE.isDragging) return;
+            const x = e.clientX - STATE.dragOffset.x;
+            const y = e.clientY - STATE.dragOffset.y;
+            panel.style.left = `${Math.max(0, Math.min(x, window.innerWidth - panel.offsetWidth))}px`;
+            panel.style.top = `${Math.max(0, Math.min(y, window.innerHeight - panel.offsetHeight))}px`;
+            panel.style.right = 'auto';
+        });
+        
+        document.addEventListener('mouseup', () => {
+            if(STATE.isDragging) {
+                STATE.isDragging = false;
+                panel.style.transition = '';
+            }
+        });
         
         // UI 更新函数：负责界面的显隐联动
         const updatePanelUI = () => {
@@ -344,15 +409,52 @@
 
         $('btn-manual-act').onclick = () => { const c = findCenter(); if(c) enqueueCapture(c, true); };
         $('btn-undo').onclick = () => { if(STATE.images.length > 0) { const last = STATE.images.pop(); STATE.hashes.delete(last.hash); STATE.totalSizeBytes -= last.blob.size; updateUI(); } };
-        $('btn-clear').onclick = () => { if(confirm('确定清空所有缓存图片吗？')) { STATE.images = []; STATE.hashes.clear(); STATE.totalSizeBytes = 0; updateUI(); } };
+        $('btn-clear').onclick = () => { if(confirm('确定清空所有缓存图片吗？')) { STATE.images = []; STATE.hashes.clear(); STATE.totalSizeBytes = 0; STATE.failedCount = 0; updateUI(); } };
         
         $('btn-dl').onclick = async () => {
             if(!STATE.images.length) return;
-            const b = $('btn-dl'); b.innerText = "打包中...";
-            const z = new JSZip(); STATE.images.forEach((img, i) => z.file(`${i+1}.${img.ext}`, img.blob));
-            const c = await z.generateAsync({type:'blob'});
-            saveAs(c, `${document.title.split(/[-_]/)[0].trim()}.zip`);
-            b.innerText = "💾 下载 ZIP 压缩包";
+            const b = $('btn-dl');
+            const originalText = b.innerText;
+            
+            try {
+                b.innerText = "打包中 0%";
+                b.disabled = true;
+                
+                const z = new JSZip();
+                const total = STATE.images.length;
+                
+                // 添加文件并显示进度
+                for(let i = 0; i < total; i++) {
+                    z.file(`${i+1}.${STATE.images[i].ext}`, STATE.images[i].blob);
+                    if(i % 10 === 0 || i === total - 1) {
+                        const progress = Math.floor((i + 1) / total * 100);
+                        b.innerText = `打包中 ${progress}%`;
+                        await new Promise(r => setTimeout(r, 0)); // 让UI更新
+                    }
+                }
+                
+                b.innerText = "压缩中...";
+                const c = await z.generateAsync({type:'blob'});
+                
+                // 文件名增强：优先提取"第X话"或章节号
+                let filename = document.title.trim();
+                const chapterMatch = filename.match(/第?(\d+)[话話集]/);
+                if(chapterMatch) {
+                    filename = `第${chapterMatch[1]}话_${filename.split(/[-_|]/)[0].trim()}`;
+                } else {
+                    filename = filename.split(/[-_|]/)[0].trim();
+                }
+                filename = filename.replace(/[\\/:*?"<>|]/g, '_');
+                
+                saveAs(c, `${filename}.zip`);
+                b.innerText = "✅ 完成！";
+                setTimeout(() => { b.innerText = originalText; b.disabled = false; }, 1500);
+            } catch(e) {
+                console.error('下载失败:', e);
+                alert(`下载失败: ${e.message}`);
+                b.innerText = originalText;
+                b.disabled = false;
+            }
         };
 
         // 穿透查找逻辑
@@ -370,8 +472,29 @@
     }
 
     function updateUI() {
-        document.getElementById('tc-count').textContent = STATE.images.length;
-        document.getElementById('tc-memory').textContent = `${(STATE.totalSizeBytes/1024/1024).toFixed(1)} MB`;
+        const countEl = document.getElementById('tc-count');
+        const memoryEl = document.getElementById('tc-memory');
+        const failedEl = document.getElementById('tc-failed');
+        
+        if(countEl) countEl.textContent = STATE.images.length;
+        
+        if(memoryEl) {
+            const mb = (STATE.totalSizeBytes/1024/1024).toFixed(1);
+            memoryEl.textContent = `${mb} MB`;
+            const usage = STATE.totalSizeBytes / STATE.memoryLimit;
+            if(usage > 0.9) memoryEl.style.color = '#f5222d';
+            else if(usage > 0.7) memoryEl.style.color = '#ff9800';
+            else memoryEl.style.color = '#888';
+        }
+        
+        if(failedEl) {
+            if(STATE.failedCount > 0) {
+                failedEl.style.display = 'block';
+                failedEl.textContent = `失败: ${STATE.failedCount}`;
+            } else {
+                failedEl.style.display = 'none';
+            }
+        }
     }
 
     // ==========================================
